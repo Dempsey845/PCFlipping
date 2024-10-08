@@ -6,6 +6,8 @@ import json
 import random
 import os
 
+import gui
+
 def generate_unique_sku():
     file_path = os.path.join('..', 'data', 'SKUS.json')
     # Open and load the JSON file
@@ -309,6 +311,26 @@ class PCBuild:
             "sku": self.sku
         }
 
+    def to_dict_name(self):
+        """Serialize the PCBuild object (names) to a dictionary."""
+        return {
+            "CPU": self.cpu.name,
+            "GPU": self.gpu.name,
+            "RAM": [self.ram.name for self.ram in self.ram],
+            "Motherboard": self.motherboard.name,
+            "SSD": self.ssd.name if self.ssd else None,
+            "HDD": self.hdd.name if self.hdd else None,
+            "NVME": self.nvme.name if self.nvme else None,
+            "PSU": self.psu.name,
+            "Case": self.case.name,
+            "Extra Costs": self.extra_costs,
+            "Targets Sell Price": self.target_sell_price,
+            "Extra Profit": self.extra_profit,
+            "List Date": self.list_date,
+            "Sell Date": self.sell_date,
+            "Sell Price": self.sell_price,
+        }
+
     def set_sku(self, sku):
         self.sku = sku
 
@@ -456,7 +478,5 @@ print(pc_build)
 
 # Load build from Build.json using its SKU
 pc_build = load_build_from_sku(3201)
-if pc_build is not None:
-    print(pc_build)
 
-#TODO Implement GUI
+gui_ = gui.GUI(pc_build)
