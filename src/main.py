@@ -207,7 +207,7 @@ def string_to_component(component_str: str):
 
 
 class PCBuild:
-    def __init__(self, cpu, gpu, ram, motherboard, create_new_sku=True, sku=-1, ssd=None, hdd=None, nvme=None, psu=None, case=None, target_sell_price=0, extra_costs=0, extra_profit=0, list_date="01/01 2024", sell_date="02/01 2024"):
+    def __init__(self, cpu, gpu, ram, motherboard, create_new_sku=True, sku=-1, image_file_name="", ssd=None, hdd=None, nvme=None, psu=None, case=None, target_sell_price=0, extra_costs=0, extra_profit=0, list_date="01/01 2024", sell_date="02/01 2024"):
         self.cpu = self.validate_component(cpu, "CPU")
         self.gpu = self.validate_component(gpu, "GPU")
         self.ram = self.validate_ram(ram)  # Could be a single RAM component or a list of RAM
@@ -225,6 +225,9 @@ class PCBuild:
         self.sell_date = sell_date
         self.sold = False
         self.sell_price = 0
+
+        self.image_file_name = image_file_name
+        self.image_path = None
 
         if create_new_sku:
             self.sku = generate_unique_sku()
@@ -293,7 +296,6 @@ class PCBuild:
         return {
             "cpu": str(self.cpu),
             "gpu": str(self.gpu),
-            "ram": [str(ram) for ram in self.ram],
             "motherboard": str(self.motherboard),
             "ssd": str(self.ssd) if self.ssd else None,
             "hdd": str(self.hdd) if self.hdd else None,
@@ -307,7 +309,8 @@ class PCBuild:
             "sell_date": self.sell_date,
             "sold": self.sold,
             "sell_price": self.sell_price,
-            "sku": self.sku
+            "sku": self.sku,
+            "image_file_name": self.image_file_name
         }
 
     def to_dict_name(self):
@@ -329,10 +332,16 @@ class PCBuild:
             "List Date": self.list_date,
             "Sell Date": self.sell_date,
             "Sell Price": self.sell_price,
+            "Total Price": self.total_price(),
+            "Total Profit": (self.sell_price - self.total_price()) + self.extra_profit
         }
 
     def set_sku(self, sku):
         self.sku = sku
+
+    def add_image(self, image_file_name):
+        self.image_path = os.path.join('..', 'images', image_file_name)
+        self.image_file_name = image_file_name
 
     @staticmethod
     def update_build_in_json(sku, updated_data):
@@ -449,7 +458,7 @@ def load_build_from_sku(sku):
 
                 pc_build = PCBuild(create_new_sku=False, sku=sku, cpu=cpu, gpu=gpu, ram=ram, ssd=ssd, hdd=hdd, nvme=nvme,
                                    psu=psu, case=case, motherboard=motherboard, target_sell_price=build["target_sell_price"], extra_costs=build["extra_costs"],
-                                   extra_profit=build["extra_profit"], list_date=build["list_date"], sell_date=build["sell_date"])
+                                   extra_profit=build["extra_profit"], list_date=build["list_date"], sell_date=build["sell_date"], image_file_name=build["image_file_name"])
 
                 pc_build.update_build(build["extra_costs"], build["sold"], build["sell_price"], build["sell_date"])
                 return pc_build
@@ -583,7 +592,6 @@ def add_build_to_window(sku_):
 
 def show_all_builds():
     gui_.clear_visible_builds()
-    print("V")
     file_path = os.path.join('..', 'data', 'SKUS.json')
     with open(file_path) as file:
         data = json.load(file)
@@ -592,12 +600,16 @@ def show_all_builds():
 
     for sku in skus:
         pc_build = load_build_from_sku(sku)
-        pc_dict = pc_build.to_dict_name()
-        gui_.window.after(100, gui_.add_pc_build(pc_dict, sku))
+        if pc_build is not None:
+            pc_dict = pc_build.to_dict_name()
+            pc_dict_full = pc_build.to_dict()
+            gui_.window.after(100, gui_.add_pc_build(pc_dict, pc_dict_full, sku))
+    gui_.update_photos()
+    gui_.update_labels()
+
 
 gui_ = gui.GUI()
 gui_.show_all_button["command"] = show_all_builds
-
 gui_.clear_visible_builds()
 
 

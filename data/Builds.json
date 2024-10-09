@@ -19,49 +19,30 @@
             "sell_date": "10/10 2024",
             "sold": true,
             "sell_price": 600,
-            "sku": 3201
+            "sku": 3201,
+            "image_file_name": "Build3201.png"
         },
         {
-            "cpu": "CPU(Ryzen 5 3400G,AMD,0.0,4,8,3.7)",
-            "gpu": "GPU(GTX 970,NVIDIA,0.0,4,1050.0)",
+            "cpu": "CPU(Ryzen 5 3600,AMD,55.0,6,12,3.6)",
+            "gpu": "GPU(RTX 2060 Super,NVIDIA,175.0,8,1750.0)",
             "ram": [
                 "RAM(Kingston FURY Beast RGB (2x8GB),Kingston,48,16,3200)"
             ],
             "motherboard": "Motherboard(A320M-A,ASUS,0.0,A320,uATX)",
-            "ssd": "SSD(500GB SSD,---,0.0,1000,3500,2500)",
+            "ssd": "SSD(Samsung 970 EVO,Samsung,0.0,1000,3500,2500)",
             "hdd": null,
             "nvme": null,
-            "psu": "PSU(CORSAIR Vs450,Corsair,0.0,450,80+ Gold)",
-            "case": "Case(MSI MAG FORCE 120A,Corsair,45.0,ATX,White)",
-            "extra_costs": 205,
-            "target_sell_price": 400,
-            "extra_profit": 0,
+            "psu": "PSU(CORSAIR CX650,Corsair,0.0,650,80+ Gold)",
+            "case": "Case(Corsair 220T White,Corsair,0.0,ATX,White)",
+            "extra_costs": 180,
+            "target_sell_price": 600,
+            "extra_profit": 60,
             "list_date": "01/01 2024",
-            "sell_date": "11/10 2024",
+            "sell_date": "10/10 2024",
             "sold": true,
-            "sell_price": 350,
-            "sku": 2741
-        },
-        {
-            "cpu": "CPU(Ryzen 5 3400G,AMD,0.0,4,8,3.7)",
-            "gpu": "GPU(GTX 970,NVIDIA,0.0,4,1050.0)",
-            "ram": [
-                "RAM(Kingston FURY Beast RGB (2x8GB),Kingston,48,16,3200)"
-            ],
-            "motherboard": "Motherboard(A320M-A,ASUS,0.0,A320,uATX)",
-            "ssd": "SSD(500GB SSD,---,0.0,1000,3500,2500)",
-            "hdd": null,
-            "nvme": null,
-            "psu": "PSU(CORSAIR Vs450,Corsair,0.0,450,80+ Gold)",
-            "case": "Case(MSI MAG FORCE 120A,Corsair,45.0,ATX,White)",
-            "extra_costs": 205,
-            "target_sell_price": 400,
-            "extra_profit": 0,
-            "list_date": "01/01 2024",
-            "sell_date": "12/10 2024",
-            "sold": true,
-            "sell_price": 350,
-            "sku": 3921
+            "sell_price": 600,
+            "sku": 4535,
+            "image_file_name": "Build3201.png"
         }
     ]
 }
