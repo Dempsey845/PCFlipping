@@ -5,7 +5,6 @@ A simple program to keep track of my pc flipping
 import json
 import random
 import os
-
 import gui
 
 def generate_unique_sku():
@@ -314,6 +313,7 @@ class PCBuild:
     def to_dict_name(self):
         """Serialize the PCBuild object (names) to a dictionary."""
         return {
+            "sku": self.sku,
             "CPU": self.cpu.name,
             "GPU": self.gpu.name,
             "RAM": [self.ram.name for self.ram in self.ram],
@@ -460,23 +460,145 @@ def load_build_from_sku(sku):
         print(f"Error reading a build with SKU {sku}: {e}")
         return None
 
-# Create a PC Build which gets added to Builds.json
-"""
-cpu = CPU(name="Ryzen 5 3600", brand="AMD", price=55, cores=6, threads=12, clock_speed=3.6)
-gpu = GPU(name="RTX 2060 Super", brand="NVIDIA", price=175, memory_size=8, clock_speed=1750)
-ram = RAM(name="Kingston FURY Beast RGB (2x8GB)", brand="Kingston", price=48, capacity=16, speed=3200)
-ssd = SSD(name="Samsung 970 EVO", brand="Samsung", price=0, capacity=1000, read_speed=3500, write_speed=2500)
-hdd = HardDrive(name="Seagate 3.5\" ", brand="Seagate", price=0, capacity=1000, rpm=1200)
-psu = PSU(name="CORSAIR CX650", brand="Corsair", price=0, wattage=650, efficiency="80+ Gold")
-case = Case(name="Corsair 220T White", brand="Corsair", price=0, form_factor="ATX", color="White")
-motherboard = Motherboard(name="A320M-A", brand="ASUS", price=0, chipset="A320", form_factor="uATX")
+def add_build(cpu_name, cpu_brand, cpu_price, cpu_cores, cpu_threads, cpu_clock_speed,
+                gpu_name, gpu_brand, gpu_price, gpu_memory_size, gpu_clock_speed,
+                ram_name, ram_brand, ram_price, ram_capacity, ram_speed,
+                has_a_ssd, ssd_name, ssd_brand, ssd_price, ssd_capacity, ssd_write_speed, ssd_read_speed,
+                has_a_hdd, hdd_name, hdd_brand, hdd_price, hdd_capacity, hdd_rpm,
+                has_a_nvme, nvme_name, nvme_brand, nvme_price, nvme_capacity, nvme_write_speed, nvme_read_speed,
+                psu_name, psu_brand, psu_price, psu_wattage, psu_efficiency,
+                case_name, case_brand, case_price, case_form_factor, case_color,
+                motherboard_name, motherboard_brand, motherboard_price, motherboard_chipset, motherboard_form_factor,
+                extra_costs, sell_price, sell_date, target_sell_price, extra_profit):
 
-pc_build = PCBuild(cpu=cpu, gpu=gpu, ram=ram, motherboard=motherboard, ssd=ssd, psu=psu, case=case, extra_costs=180, target_sell_price=600, extra_profit=60)
-pc_build.set_to_sold(600, "10/10 2024")
-print(pc_build)
-"""
+    # Create a PC Build which gets added to Builds.json
+    cpu = CPU(
+        name=cpu_name,
+        brand=cpu_brand,
+        price=cpu_price,
+        cores=cpu_cores,
+        threads=cpu_threads,
+        clock_speed=cpu_clock_speed
+    )
 
-# Load build from Build.json using its SKU
-pc_build = load_build_from_sku(3201)
+    gpu = GPU(
+        name=gpu_name,
+        brand=gpu_brand,
+        price=gpu_price,
+        memory_size=gpu_memory_size,
+        clock_speed=gpu_clock_speed
+    )
 
-gui_ = gui.GUI(pc_build)
+    ram = RAM(
+        name=ram_name,
+        brand=ram_brand,
+        price=ram_price,
+        capacity=ram_capacity,
+        speed=ram_speed
+    )
+
+    if has_a_ssd:
+        ssd = SSD(
+            name=ssd_name,
+            brand=ssd_brand,
+            price=ssd_price,
+            capacity=ssd_capacity,
+            read_speed=ssd_read_speed,
+            write_speed=ssd_write_speed
+        )
+    else:
+        ssd = None
+
+    if has_a_hdd:
+        hdd = HardDrive(
+            name=hdd_name,
+            brand=hdd_brand,
+            price=hdd_price,
+            capacity=hdd_capacity,
+            rpm=hdd_rpm
+        )
+    else:
+        hdd = None
+
+    if has_a_nvme:
+        nvme = NVMe(
+            name=nvme_name,
+            brand=nvme_brand,
+            price=nvme_price,
+            capacity=nvme_capacity,
+            read_speed=nvme_read_speed,
+            write_speed=nvme_write_speed
+        )
+    else:
+        nvme = None
+
+    psu = PSU(
+        name=psu_name,
+        brand=psu_brand,
+        price=psu_price,
+        wattage=psu_wattage,
+        efficiency=psu_efficiency
+    )
+
+    case = Case(
+        name=case_name,
+        brand=case_brand,
+        price=case_price,
+        form_factor=case_form_factor,
+        color=case_color
+    )
+
+    motherboard = Motherboard(
+        name=motherboard_name,
+        brand=motherboard_brand,
+        price=motherboard_price,
+        chipset=motherboard_chipset,
+        form_factor=motherboard_form_factor
+    )
+
+    pc_build = PCBuild(
+        cpu=cpu,
+        gpu=gpu,
+        ram=ram,
+        motherboard=motherboard,
+        ssd=ssd,
+        hdd=hdd,
+        nvme=nvme,
+        psu=psu,
+        case=case,
+        extra_costs=extra_costs,
+        target_sell_price=target_sell_price,
+        extra_profit=extra_profit
+    )
+
+    pc_build.set_to_sold(sell_price, sell_date)
+    print(pc_build)
+
+
+def add_build_to_window(sku_):
+    pc_build = load_build_from_sku(sku_)
+    pc_dict = pc_build.to_dict_name()
+    gui_.window.after(100, gui_.add_pc_build(pc_dict, sku_))
+    return pc_dict
+
+def show_all_builds():
+    gui_.clear_visible_builds()
+    print("V")
+    file_path = os.path.join('..', 'data', 'SKUS.json')
+    with open(file_path) as file:
+        data = json.load(file)
+
+    skus = data["SKUS"]
+
+    for sku in skus:
+        pc_build = load_build_from_sku(sku)
+        pc_dict = pc_build.to_dict_name()
+        gui_.window.after(100, gui_.add_pc_build(pc_dict, sku))
+
+gui_ = gui.GUI()
+gui_.show_all_button["command"] = show_all_builds
+
+gui_.clear_visible_builds()
+
+
+gui_.start()
