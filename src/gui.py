@@ -8,8 +8,10 @@ class ScrollableFrame(tkinter.Frame):
         super().__init__(master)
 
         # Create a canvas
-        self.canvas = tkinter.Canvas(self, bg='lightblue')
-        self.scrollable_frame = tkinter.Frame(self.canvas, bg='lightblue')
+        self.canvas = tkinter.Canvas(self, bg=master["bg"])
+        self.scrollable_frame = tkinter.Frame(self.canvas, bg=master["bg"])
+
+        print(master["bg"])
 
         # Add a scrollbar
         self.scrollbar = tkinter.Scrollbar(self, orient="vertical", command=self.canvas.yview)
@@ -35,6 +37,10 @@ class ScrollableFrame(tkinter.Frame):
         # Destroy all widgets inside the scrollable frame
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
+
+    def print_widgets(self):
+        for widget in self.scrollable_frame.winfo_children():
+            print(widget)
 
     def hide(self):
         """Hide the scrollable frame."""
@@ -119,7 +125,7 @@ class GUI:
         self.window.title("PC Flipping")
 
         # Set the window size explicitly
-        self.window.geometry("600x1000")  # Set the initial size of the window
+        self.window.geometry("850x1000")  # Set the initial size of the window
         self.window.configure(bg="black")
 
         # Create title grid frame
@@ -134,13 +140,27 @@ class GUI:
         self.navigation_grid_frame.pack()
 
         # Create build grid frame with fixed width and allow height expansion
-        self.build_grid_frame = tkinter.Frame(self.window, bg="lightblue", width=600, height=1000)
+        self.build_grid_frame = tkinter.Frame(self.window, bg="lightblue", width=850, height=850)
         self.build_grid_frame.pack_propagate(False)  # Prevent resizing to fit contents
         self.build_grid_frame.pack(fill="x")  # Fill horizontally but fixed width
 
-        # Create scrollable frame within the light blue frame
+        # Create scrollable frame within the build frame
         self.build_scrollable_frame = ScrollableFrame(self.build_grid_frame)
         self.build_scrollable_frame.pack(fill="both", expand=True)
+
+        # Create add build grid frame with fixed width and allow height expansion
+        self.add_build_grid_frame = tkinter.Frame(self.window, bg="red", width=850, height=1200)
+        self.add_build_grid_frame.pack_propagate(False)  # Prevent resizing to fit contents
+        self.add_build_grid_frame.pack(fill="x")  # Fill horizontally but fixed width
+
+        # Create scrollable frame within the add build frame
+        self.add_build_scrollable_frame = ScrollableFrame(self.add_build_grid_frame)
+        self.add_build_scrollable_frame.pack(fill="both", expand=True)
+
+        self.add_build_scrollable_frame.columnconfigure(0, weight=1)
+        self.add_build_scrollable_frame.columnconfigure(1, weight=1)
+        self.add_build_scrollable_frame.columnconfigure(2, weight=1)
+        self.add_build_scrollable_frame.canvas.configure(scrollregion=self.add_build_grid_frame.bbox("all"))
 
         # Start Scene Variables
         self.add_build_button = tkinter.Button(text="Add Build", command=self.go_to_add_build_scene, bg="black")
@@ -179,6 +199,8 @@ class GUI:
         self.all_entries = self.all_build_entries + []
 
         self.go_to_start_scene()
+
+        self.window.bind("z", lambda x: self.hide_build_grid_frame())
 
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -272,103 +294,105 @@ class GUI:
         self.add_case_component("Colour")
 
     def add_cpu_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         # Position the title differently from the others
         if title:
             component.label.grid(column=1, row=1, pady=5)
         else:
-            component.label.grid(column=len(self.cpu_components)+1, row=1)
-            component.entry.grid(column=len(self.cpu_components)+1, row=2)
+            component.label.grid(column=len(self.cpu_components)+1, row=1, sticky="ew")
+            component.entry.grid(column=len(self.cpu_components)+1, row=2, sticky="ew")
 
         self.cpu_components.append(component)  # Store the component for later use
 
     # Similar methods for GPU, RAM, Motherboard, etc.
     def add_gpu_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
             component.label.grid(column=1, row=3, pady=5)
         else:
-            component.label.grid(column=len(self.gpu_components) + 1, row=4)
-            component.entry.grid(column=len(self.gpu_components) + 1, row=5)
+            component.label.grid(column=len(self.gpu_components) + 1, row=3, sticky="ew")
+            component.entry.grid(column=len(self.gpu_components) + 1, row=4, sticky="ew")
 
         self.gpu_components.append(component)
 
     def add_ram_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
-            component.label.grid(column=1, row=6, pady=5)
+            component.label.grid(column=1, row=5, pady=5)
         else:
-            component.label.grid(column=len(self.ram_components) + 1, row=7)
-            component.entry.grid(column=len(self.ram_components) + 1, row=8)
+            component.label.grid(column=len(self.ram_components) + 1, row=5, sticky="ew")
+            component.entry.grid(column=len(self.ram_components) + 1, row=6, sticky="ew")
 
         self.ram_components.append(component)
 
     def add_motherboard_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title,)
+
 
         if title:
-            component.label.grid(column=1, row=9, pady=5)
+            component.label.grid(column=1, row=7, pady=5, padx=(0, 5))
+
         else:
-            component.label.grid(column=len(self.motherboard_components) + 1, row=10)
-            component.entry.grid(column=len(self.motherboard_components) + 1, row=11)
+            component.label.grid(column=len(self.motherboard_components) + 1, row=7, sticky="ew")
+            component.entry.grid(column=len(self.motherboard_components) + 1, row=8, sticky="ew")
 
         self.motherboard_components.append(component)
 
     def add_ssd_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
-            component.label.grid(column=1, row=12, pady=5)
+            component.label.grid(column=1, row=9, pady=5)
         else:
-            component.label.grid(column=len(self.ssd_components) + 1, row=13)
-            component.entry.grid(column=len(self.ssd_components) + 1, row=14)
+            component.label.grid(column=len(self.ssd_components) + 1, row=9, sticky="ew")
+            component.entry.grid(column=len(self.ssd_components) + 1, row=10, sticky="ew")
 
         self.ssd_components.append(component)
 
     def add_hdd_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
-            component.label.grid(column=1, row=15, pady=5)
+            component.label.grid(column=1, row=11, pady=5)
         else:
-            component.label.grid(column=len(self.hdd_components) + 1, row=16)
-            component.entry.grid(column=len(self.hdd_components) + 1, row=17)
+            component.label.grid(column=len(self.hdd_components) + 1, row=11, sticky="ew")
+            component.entry.grid(column=len(self.hdd_components) + 1, row=12, sticky="ew")
 
         self.hdd_components.append(component)
 
     def add_nvme_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
-            component.label.grid(column=1, row=18, pady=5)
+            component.label.grid(column=1, row=13, pady=5)
         else:
-            component.label.grid(column=len(self.nvme_components) + 1, row=19)
-            component.entry.grid(column=len(self.nvme_components) + 1, row=20)
+            component.label.grid(column=len(self.nvme_components) + 1, row=13, sticky="ew")
+            component.entry.grid(column=len(self.nvme_components) + 1, row=14, sticky="ew")
 
         self.nvme_components.append(component)
 
     def add_psu_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
-            component.label.grid(column=1, row=21, pady=5)
+            component.label.grid(column=1, row=15, pady=5)
         else:
-            component.label.grid(column=len(self.psu_components) + 1, row=22)
-            component.entry.grid(column=len(self.psu_components) + 1, row=23)
+            component.label.grid(column=len(self.psu_components) + 1, row=15, sticky="ew")
+            component.entry.grid(column=len(self.psu_components) + 1, row=16, sticky="ew")
 
         self.psu_components.append(component)
 
     def add_case_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.build_scrollable_frame, text, font, is_title=title)
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
 
         if title:
-            component.label.grid(column=1, row=24, pady=5)
+            component.label.grid(column=1, row=17, pady=5)
         else:
-            component.label.grid(column=len(self.case_components) + 1, row=25)
-            component.entry.grid(column=len(self.case_components) + 1, row=26)
+            component.label.grid(column=len(self.case_components) + 1, row=17, sticky="ew")
+            component.entry.grid(column=len(self.case_components) + 1, row=18, sticky="ew")
 
         self.case_components.append(component)
 
@@ -542,8 +566,22 @@ class GUI:
 
     def clear_all_components(self):
         """Call clear methods for all components."""
-        if self.extras_label is not None:
-            self.extras_label.grid_forget()
+        self.cpu_components = []
+        self.gpu_components = []
+        self.ram_components = []
+        self.motherboard_components = []
+        self.ssd_components = []
+        self.nvme_components = []
+        self.hdd_components = []
+        self.psu_components = []
+        self.case_components = []
+        self.extra_costs_components = None
+        self.target_sell_price_component = None
+        self.extra_profit_component = None
+        self.list_date_component = None
+        self.sell_date_component = None
+        self.sell_price_component = None
+        """
         self.clear_cpu_components()
         self.clear_gpu_components()
         self.clear_ram_components()
@@ -560,48 +598,58 @@ class GUI:
         self.clear_sell_date()
         self.clear_sell_price()
         self.clear_extra_costs_components()
+        """
 
     # Specific methods for other extra fields
     def add_target_sell_price(self):
-        self.extras_label = Label(self.build_scrollable_frame, font=("Arial", 16, "bold"), text="Extras")
-        self.extras_label.grid(column=1, row=27, pady=100)
+        self.extras_label = Label(self.add_build_scrollable_frame.scrollable_frame, font=("Arial", 16, "bold"), text="Extras")
+        self.extras_label.grid(column=1, row=27, pady=10, padx=(0, 5), sticky="w")
 
-        self.target_sell_price_component = ComponentEntry(self.build_scrollable_frame, "Target Sell Price")
-        self.target_sell_price_component.label.grid(column=2, row=27)
-        self.target_sell_price_component.entry.grid(column=2, row=28)
+        self.target_sell_price_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Target Sell Price")
+        self.target_sell_price_component.label.grid(column=2, row=27, sticky="ew")
+        self.target_sell_price_component.entry.grid(column=2, row=28, sticky="ew")
 
     def add_extra_profit(self):
-        self.extra_profit_component = ComponentEntry(self.build_scrollable_frame, "Extra Profit")
-        self.extra_profit_component.label.grid(column=3, row=27)
-        self.extra_profit_component.entry.grid(column=3, row=28)
+        self.extra_profit_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Extra Profit")
+        self.extra_profit_component.label.grid(column=3, row=27, sticky="ew")
+        self.extra_profit_component.entry.grid(column=3, row=28, sticky="ew")
 
     def add_list_date(self):
-        self.list_date_component = ComponentEntry(self.build_scrollable_frame, "List Date")
-        self.list_date_component.label.grid(column=4, row=27)
-        self.list_date_component.entry.grid(column=4, row=28)
+        self.list_date_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "List Date")
+        self.list_date_component.label.grid(column=4, row=27,sticky="ew")
+        self.list_date_component.entry.grid(column=4, row=28, sticky="ew")
 
     def add_sell_date(self):
-        self.sell_date_component = ComponentEntry(self.build_scrollable_frame, "Sell Date")
-        self.sell_date_component.label.grid(column=5, row=27)
-        self.sell_date_component.entry.grid(column=5, row=28)
+        self.sell_date_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Sell Date")
+        self.sell_date_component.label.grid(column=5, row=27,sticky="ew")
+        self.sell_date_component.entry.grid(column=5, row=28,sticky="ew")
 
     def add_sell_price(self):
-        self.sell_price_component = ComponentEntry(self.build_scrollable_frame, "Sell Price")
-        self.sell_price_component.label.grid(column=6, row=27)
-        self.sell_price_component.entry.grid(column=6, row=28)
+        self.sell_price_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Sell Price")
+        self.sell_price_component.label.grid(column=6, row=27,sticky="ew")
+        self.sell_price_component.entry.grid(column=6, row=28,sticky="ew")
 
     def add_extra_costs(self):
-        self.extra_costs_components = ComponentEntry(self.build_scrollable_frame, "Extra Costs")
-        self.extra_costs_components.label.grid(column=7, row=27)
-        self.extra_costs_components.entry.grid(column=7, row=28)
+        self.extra_costs_components = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Extra Costs")
+        self.extra_costs_components.label.grid(column=7, row=27, sticky="ew")
+        self.extra_costs_components.entry.grid(column=7, row=28, sticky="ew")
 
     def hide_build_grid_frame(self):
         """Hide the build grid frame."""
-        self.build_grid_frame.grid_forget()
+        print("Hidden")
+        self.build_scrollable_frame.hide()
+        self.build_grid_frame.pack_forget()
 
     def show_build_grid_frame(self):
         """Show the build grid frame."""
         self.build_grid_frame.pack(fill="x")
+
+    def hide_add_build_grid_frame(self):
+        self.add_build_scrollable_frame.hide()
+        self.add_build_grid_frame.pack_forget()
+
+    def show_add_build_grid_frame(self):
+        self.add_build_grid_frame.pack(fill="x")
 
     def clear_scene(self):
         for button in self.all_buttons:
@@ -617,6 +665,7 @@ class GUI:
     def change_scene(self, scene):
         self.clear_scene()
         self.build_scrollable_frame.clear()
+        self.add_build_scrollable_frame.clear()
         self.clear_all_components()
 
         match scene:
@@ -624,19 +673,23 @@ class GUI:
                 self.add_build_button.grid(in_=self.navigation_grid_frame, column=0, row=1)
                 self.show_all_button.grid(in_=self.navigation_grid_frame, column=1, row=1)
             case Scene.ADD_BUILD_SCENE:
+                self.add_build_scrollable_frame.show()
                 self.go_back_to_start_scene_button.grid(in_=self.navigation_grid_frame, column=1, row=1, pady=5)
 
                 # Layout CPU Entries and Labels
                 self.add_all_entry_components()
 
-
     def go_to_start_scene(self):
+        self.hide_add_build_grid_frame()
         self.show_build_grid_frame()
         self.change_scene(Scene.START_SCENE)
         self.build_scrollable_frame.show()
 
     def go_to_add_build_scene(self):
+        self.hide_build_grid_frame()
+        self.show_add_build_grid_frame()
         self.change_scene(Scene.ADD_BUILD_SCENE)
+        self.add_build_scrollable_frame.show()
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
