@@ -2,6 +2,80 @@ import tkinter
 import time
 from tkinter import messagebox, Entry, Label, Canvas, PhotoImage
 from enum import Enum
+from image_uploader import *
+from PIL import Image, ImageTk
+from image_uploader import open_image_uploader
+
+import os
+import json
+import random
+
+def get_builds_list():
+    file_path = os.path.join('..', 'data', 'Builds.json')
+    # Open and load the JSON file
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    # Access the list of builds
+    builds = data['builds']
+    return builds
+
+
+
+def clean_unused_skus():
+    builds = get_builds_list()
+
+    file_path = os.path.join('..', 'data', 'SKUS.json')
+
+    # Open and load the JSON file
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    # Access the list of SKUs
+    skus = data['SKUS']
+    used_skus = set()  # Use a set for faster lookups
+
+    # Collect all used SKUs
+    for build in builds:
+        for sku in skus:
+            if build["sku"] == sku:
+                used_skus.add(sku)
+
+    # Filter the SKUs to keep only the used ones
+    cleaned_skus = [sku for sku in skus if sku in used_skus]
+
+    # Update the JSON data
+    data['SKUS'] = cleaned_skus
+
+    # Write back the cleaned data to the JSON file
+    with open(file_path, 'w') as file:
+        json.dump(data, file, indent=4)
+
+    print("Unused SKUs have been cleared from SKUS.json.")
+
+
+def generate_unique_sku():
+    file_path = os.path.join('..', 'data', 'SKUS.json')
+    # Open and load the JSON file
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    # Access the list of used SKUs
+    used_skus = data['SKUS']
+
+    # Generate a unique random SKU that isn't already used
+    new_sku = random.randint(1000, 10000)
+
+    # Check if the SKU is already used and keep generating until a unique one is found
+    while new_sku in used_skus:
+        new_sku = random.randint(1000, 10000)
+
+    # Save the updated SKU list back to the JSON file
+    used_skus.append(new_sku)
+    with open(file_path, 'w') as file:
+        json.dump(data, file, indent=4)
+
+    return new_sku
 
 class ScrollableFrame(tkinter.Frame):
     def __init__(self, master):
@@ -10,8 +84,6 @@ class ScrollableFrame(tkinter.Frame):
         # Create a canvas
         self.canvas = tkinter.Canvas(self, bg=master["bg"])
         self.scrollable_frame = tkinter.Frame(self.canvas, bg=master["bg"])
-
-        print(master["bg"])
 
         # Add a scrollbar
         self.scrollbar = tkinter.Scrollbar(self, orient="vertical", command=self.canvas.yview)
@@ -117,6 +189,14 @@ class GUI:
     TODO - IMPLEMENT SORTING BUILDS BY DIFFERENT TYPES E.G list-date, profit, cpu, cpu-brand, etc...
     """
     def __init__(self):
+        self.new_sku_label = None
+        self.new_build_sku = None
+        self.tk_image = None
+        self.upload_btn = None
+        self.display_label = None
+        self.upload_image_button = None
+        self.image_upload_frame = None
+        self.image_uploader = None
         self.running = True
         self.scene = "START_SCENE"
 
@@ -125,7 +205,7 @@ class GUI:
         self.window.title("PC Flipping")
 
         # Set the window size explicitly
-        self.window.geometry("850x1000")  # Set the initial size of the window
+        self.window.geometry("1300x900")  # Set the initial size of the window
         self.window.configure(bg="black")
 
         # Create title grid frame
@@ -199,8 +279,6 @@ class GUI:
         self.all_entries = self.all_build_entries + []
 
         self.go_to_start_scene()
-
-        self.window.bind("z", lambda x: self.hide_build_grid_frame())
 
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -667,6 +745,7 @@ class GUI:
         self.build_scrollable_frame.clear()
         self.add_build_scrollable_frame.clear()
         self.clear_all_components()
+        clean_unused_skus()
 
         match scene:
             case Scene.START_SCENE:
@@ -690,6 +769,60 @@ class GUI:
         self.show_add_build_grid_frame()
         self.change_scene(Scene.ADD_BUILD_SCENE)
         self.add_build_scrollable_frame.show()
+
+        self.new_build_sku = generate_unique_sku()
+
+        self.image_upload_frame = tkinter.Frame(self.add_build_scrollable_frame, bg="lightblue", width=500, height=500)
+        self.image_upload_frame.grid(column=3, row=0, pady=20, sticky="nsew", padx=(0, 50))
+
+        self.display_label = tk.Label(self.image_upload_frame, text="No Image Uploaded", bg="lightblue", width=40, height=15)
+        self.display_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        # Set row/column weights so the label can expand
+        self.image_upload_frame.grid_columnconfigure(0, weight=1)
+        self.image_upload_frame.grid_rowconfigure(0, weight=1)
+
+        self.upload_btn = tk.Button(
+            self.image_upload_frame,
+            text="Upload Image",
+            command=self.open_uploader,
+            bg="lightblue",  # Button background color
+            activebackground="lightblue",  # Background when active
+            relief="flat",  # Remove the button outline
+            borderwidth=0,  # No border around the button
+            highlightthickness=0  # No highlight outline
+        )
+        self.upload_btn.grid(row=1, column=0, pady=10, sticky="ew")
+
+        self.new_sku_label = tk.Label(self.image_upload_frame, text=f"Builds SKU: {self.new_build_sku}", bg="lightblue", font=("Arial", 16, "bold"))
+        self.new_sku_label.grid(row=2, column=0, stick="ew")
+
+    def open_uploader(self):
+        """
+        Open the image uploader window and provide a callback to display the selected image.
+        """
+        open_image_uploader(self.display_image, self.new_build_sku)
+
+    def display_image(self, image_path):
+        """
+        Display the selected and uploaded image in the display window.
+
+        :param image_path: The file path of the uploaded image.
+        """
+        img = Image.open(image_path)
+
+        # Resize the image to the desired size (300x250)
+        img = img.resize((300, 250), Image.Resampling.LANCZOS)
+
+        self.tk_image = ImageTk.PhotoImage(img)
+
+        self.display_label.configure(image=self.tk_image, text="")
+
+        # Keep a reference to avoid the image being garbage collected
+        self.display_label.image = self.tk_image
+
+        # Make sure the label is large enough to display the image
+        self.display_label.config(width=300, height=250)
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):

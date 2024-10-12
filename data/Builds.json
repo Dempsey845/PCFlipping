@@ -20,7 +20,7 @@
             "sold": true,
             "sell_price": 600,
             "sku": 3201,
-            "image_file_name": "Build3201.png"
+            "image_file_name": "default_image.png"
         },
         {
             "cpu": "CPU(Ryzen 5 3600,AMD,55.0,6,12,3.6)",
@@ -42,7 +42,7 @@
             "sold": true,
             "sell_price": 600,
             "sku": 4535,
-            "image_file_name": "Build3201.png"
+            "image_file_name": "default_image.png"
         }
     ]
 }
