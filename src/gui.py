@@ -1,6 +1,6 @@
 import tkinter
 import time
-from tkinter import messagebox, Entry, Label, Canvas, PhotoImage
+from tkinter import messagebox, Entry, Label, Canvas, PhotoImage, END
 from enum import Enum
 from image_uploader import *
 from PIL import Image, ImageTk
@@ -22,7 +22,6 @@ def get_builds_list():
 
 def clean_unused_skus():
     builds = get_builds_list()
-
     file_path = os.path.join('..', 'data', 'SKUS.json')
 
     # Open and load the JSON file
@@ -35,8 +34,10 @@ def clean_unused_skus():
 
     # Collect all used SKUs
     for build in builds:
+        print(build["sku"])
         for sku in skus:
-            if build["sku"] == sku:
+            print(sku)
+            if str(build["sku"]) == str(sku):
                 used_skus.add(sku)
 
     # Filter the SKUs to keep only the used ones
@@ -126,7 +127,10 @@ class PCBuildUI:
         self.full_pc_dict = full_pc_dict
         self.pc_dict = pc_dict
         self.build_sku_label = None
-        self.update_build_button = None
+        self.update_build_button = tkinter.Button(text=f"Edit ({sku})", bg="lightblue", width=4, height=2,
+                                                                    font=("Arial", 10), borderwidth=0,
+                                                                    highlightbackground="white")
+        self.sku = sku
 
 
         self.pc_str = ""
@@ -170,6 +174,7 @@ class Scene(Enum):
 class ComponentEntry:
     def __init__(self, parent, text, font=("Arial", 12, "bold"), entry_width=12, is_title=False, is_checkbox=False):
         self.label = None
+        self.is_checkbox = is_checkbox
         if not is_checkbox:
             self.label = tkinter.Label(parent, text=text, font=font)
             self.label.grid(sticky='w', pady=1)  # Align the label to the left
@@ -768,7 +773,6 @@ class GUI:
         self.build_scrollable_frame.clear()
         self.add_build_scrollable_frame.clear()
         self.clear_all_components()
-        clean_unused_skus()
 
         match scene:
             case Scene.START_SCENE:
@@ -789,6 +793,9 @@ class GUI:
                             self.cpu_components + self.gpu_components + self.ram_components + self.motherboard_components + self.ssd_components +
                             self.nvme_components + self.hdd_components + self.psu_components + self.case_components + self.all_extra_components)
                 print(self.all_components)
+
+        clean_unused_skus()
+
 
     def go_to_start_scene(self):
         self.hide_add_build_grid_frame()
@@ -878,9 +885,6 @@ class GUI:
     def update_labels(self):
         total_builds = len(self.visible_builds)
         for i in range(total_builds):
-            self.visible_builds[i].update_build_button = tkinter.Button(text="Update", bg="lightblue", width=4, height=2,
-                                                      font=("Arial", 10), borderwidth=0, highlightbackground="white")
-            self.visible_builds[i].update_build_button.configure(text=f"{self.visible_builds[i].get_sku()}")
             self.visible_builds[i].update_build_button.grid(in_=self.build_scrollable_frame.scrollable_frame, column=1, row=i, padx=(5, 0))
             self.visible_builds[i].description_label = tkinter.Label(
                 self.build_scrollable_frame.scrollable_frame, text=self.visible_builds[i].pc_str, bg='lightblue',
@@ -904,10 +908,105 @@ class GUI:
             self.visible_builds[i].build_image.grid(in_=self.build_scrollable_frame.scrollable_frame, column = 0, row=i)
             self.visible_builds[i].build_image.image = build_img
 
-    def add_pc_build(self, pc_dict, full_pc_dict, sku):
+    def add_pc_build(self, pc_dict, full_pc_dict, sku, pc_build):
         print(self.visible_builds)
         new_build = PCBuildUI(pc_dict, full_pc_dict, sku)
+        new_build.update_build_button.config(command=lambda: self.on_update_build(sku, pc_build))
         self.visible_builds.append(new_build)
+
+    def on_update_build(self, sku, pc_build):
+        # Load the build data using the given SKU
+        build = pc_build
+        print(f"Button clicked, the SKU is {sku}")
+
+        # Navigate to the add build scene
+        self.go_to_add_build_scene()
+        self.new_build_sku = sku
+        self.new_sku_label.config(text=sku)
+
+        # Create a dictionary to map component titles to corresponding build attributes
+        build_info = {
+            "cpu": {"name": build.cpu.name, "brand": build.cpu.brand, "price": build.cpu.price},
+            "gpu": {"name": build.gpu.name, "brand": build.gpu.brand, "price": build.gpu.price},
+            "ram": {"name": build.ram.name, "brand": build.ram.brand, "price": build.ram.price},
+            "motherboard": {"name": build.motherboard.name, "brand": build.motherboard.brand,
+                            "price": build.motherboard.price},
+            "ssd": {"name": build.ssd.name if build.ssd else None, "brand": build.ssd.brand if build.ssd else None,
+                    "price": build.ssd.price if build.ssd else None},
+            "hdd": {"name": build.hdd.name if build.hdd else None, "brand": build.hdd.brand if build.hdd else None,
+                    "price": build.hdd.price if build.hdd else None},
+            "nvme": {"name": build.nvme.name if build.nvme else None, "brand": build.nvme.brand if build.nvme else None,
+                     "price": build.nvme.price if build.nvme else None},
+            "psu": {"name": build.psu.name, "brand": build.psu.brand, "price": build.psu.price},
+            "case": {"name": build.case.name, "brand": build.case.brand, "price": build.case.price},
+            "extra costs": build.extra_costs,
+            "target sell price": build.target_sell_price,
+            "extra profit": build.extra_profit,
+            "list date": build.list_date,
+            "sell date": build.sell_date,
+            "sell price": build.sell_price,
+            "total price": build.total_price(),
+            "total profit": (build.sell_price - build.total_price()) + build.extra_profit
+        }
+
+        # Define the order of components
+        component_order = ['cpu', 'gpu', 'ram', 'motherboard', 'ssd', 'hdd', 'nvme', 'psu', 'case']
+
+        # Iterate through the defined component order
+        for component_title in component_order:
+            # Find the index of the title component in all_components
+            for i in range(len(self.all_components)):
+                component = self.all_components[i]
+                # Check if this component is a title and matches the current component_title
+                if isinstance(component, ComponentEntry) and component.label and component.label.cget(
+                        "text").lower() == component_title:
+                    print(f"Processing component: {component_title}")
+
+                    # Now, update the name, brand, and price for this component
+                    try:
+                        # Index of the title component
+                        title_index = i
+
+                        # Get name, brand, and price from build_info
+                        name_value = build_info[component_title]["name"]
+                        brand_value = build_info[component_title]["brand"]
+                        price_value = build_info[component_title]["price"]
+
+                        # Update the name entry
+                        self.all_components[title_index + 1].entry.delete(0, END)  # Clear current entry for name
+                        self.all_components[title_index + 1].entry.insert(0, str(name_value))  # Insert new name
+
+                        # Update the brand entry
+                        self.all_components[title_index + 2].entry.delete(0, END)  # Clear current entry for brand
+                        self.all_components[title_index + 2].entry.insert(0, str(brand_value))  # Insert new brand
+
+                        # Update the price entry
+                        self.all_components[title_index + 3].entry.delete(0, END)  # Clear current entry for price
+                        self.all_components[title_index + 3].entry.insert(0, str(price_value))  # Insert new price
+
+                        print(
+                            f"Updated {component_title} values: Name: {name_value}, Brand: {brand_value}, Price: {price_value}")
+                    except IndexError:
+                        print(f"Error: Unable to update components for {component_title}, index out of range.")
+
+                    # Break out of the loop once the title component has been processed
+                    break
+
+        # Handle extra values that do not belong to a component
+        extra_values = ["extra costs", "target sell price", "extra profit", "list date", "sell date", "sell price"]
+        for extra in extra_values:
+            if extra in build_info:
+                value_to_insert = build_info[extra]
+                for component in self.all_components:
+                    if isinstance(component, ComponentEntry) and component.label and component.label.cget(
+                            "text").lower() == extra:
+                        if value_to_insert is not None:
+                            component.entry.delete(0, END)  # Clear the current entry
+                            component.entry.insert(0, str(value_to_insert))  # Insert the new value
+                            print(f"Value Inserted for {extra}: {value_to_insert}")
+
+        print("Finished updating component entries.")
+        self.add_build_scrollable_frame.scrollable_frame.update()  # Update the scrollable frame
 
     def remove_build(self, sku):
         for build in self.visible_builds:

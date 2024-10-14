@@ -7,6 +7,9 @@ import random
 import os
 import gui
 
+from gui import ComponentEntry
+from tkinter import END
+
 def generate_unique_sku():
     file_path = os.path.join('..', 'data', 'SKUS.json')
     # Open and load the JSON file
@@ -404,9 +407,13 @@ def show_all_builds():
         if pc_build is not None:
             pc_dict = pc_build.to_dict_name()
             pc_dict_full = pc_build.to_dict()
-            gui_.window.after(100, gui_.add_pc_build(pc_dict, pc_dict_full, sku))
+            gui_.window.after(100, gui_.add_pc_build(pc_dict, pc_dict_full, sku, pc_build))
+
     gui_.update_photos()
     gui_.update_labels()
+
+    gui_.window.update()
+    gui_.window.update_idletasks()
 
 def add_build_from_entries():
     if not gui_.has_image:
@@ -516,9 +523,6 @@ def add_build_from_entries():
 
     # Print or store the build object as needed
     print(pc_build)
-
-def on_update_build():
-    pass
 
 gui_ = gui.GUI()
 gui_.show_all_button["command"] = show_all_builds
