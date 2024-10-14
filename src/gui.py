@@ -4,7 +4,7 @@ from tkinter import messagebox, Entry, Label, Canvas, PhotoImage
 from enum import Enum
 from image_uploader import *
 from PIL import Image, ImageTk
-from image_uploader import open_image_uploader
+from image_uploader import open_image_uploader, resize_image
 
 import os
 import json
@@ -19,8 +19,6 @@ def get_builds_list():
     # Access the list of builds
     builds = data['builds']
     return builds
-
-
 
 def clean_unused_skus():
     builds = get_builds_list()
@@ -52,7 +50,6 @@ def clean_unused_skus():
         json.dump(data, file, indent=4)
 
     print("Unused SKUs have been cleared from SKUS.json.")
-
 
 def generate_unique_sku():
     file_path = os.path.join('..', 'data', 'SKUS.json')
@@ -129,17 +126,26 @@ class PCBuildUI:
         self.full_pc_dict = full_pc_dict
         self.pc_dict = pc_dict
         self.build_sku_label = None
+        self.update_build_button = None
+
 
         self.pc_str = ""
 
         self.build_image = None
 
+        counter = 0
 
         for key, value in pc_dict.items():
             if value is not None and key != "ram" and key != "sku":
                 self.pc_str += f"{key}: {value}\n"
+                counter += 1
             elif key == "RAM":
                 self.pc_str += f"{key}: {"".join(value)}\n"
+                counter += 1
+
+            if counter == 4:
+                self.pc_str += "\n"
+                counter = 0
 
             if key == "image_path":
                 self.image_path = value
@@ -162,16 +168,22 @@ class Scene(Enum):
     ADD_BUILD_SCENE = 2
 
 class ComponentEntry:
-    def __init__(self, parent, text, font=("Arial", 12, "bold"), entry_width=12, is_title=False):
-        self.label = tkinter.Label(parent, text=text, font=font)
-        self.label.grid(sticky='w', pady=1)  # Align the label to the left
+    def __init__(self, parent, text, font=("Arial", 12, "bold"), entry_width=12, is_title=False, is_checkbox=False):
+        self.label = None
+        if not is_checkbox:
+            self.label = tkinter.Label(parent, text=text, font=font)
+            self.label.grid(sticky='w', pady=1)  # Align the label to the left
         self.is_title = is_title
 
-        if not is_title:
+        if not is_title and not is_checkbox:
             self.entry = tkinter.Entry(parent, width=entry_width, )
             self.entry.grid(sticky='w', pady=1)  # Align the entry to the left
         else:
             self.entry = None
+
+        if is_checkbox:
+            self.is_checked = tk.BooleanVar()
+            self.checkbox = tkinter.Checkbutton(parent, variable=self.is_checked)
 
     def get_value(self):
         return self.entry.get()  # Return the text from the entry
@@ -189,15 +201,15 @@ class GUI:
     TODO - IMPLEMENT SORTING BUILDS BY DIFFERENT TYPES E.G list-date, profit, cpu, cpu-brand, etc...
     """
     def __init__(self):
+        self.update_build_buttons = []
+        self.has_image = False
+        self.edit_build_frame = None
         self.new_sku_label = None
         self.new_build_sku = None
         self.tk_image = None
         self.upload_btn = None
         self.display_label = None
-        self.upload_image_button = None
         self.image_upload_frame = None
-        self.image_uploader = None
-        self.running = True
         self.scene = "START_SCENE"
 
         # Create main window
@@ -248,11 +260,12 @@ class GUI:
         self.visible_builds = []
 
         # Add Build Scene Variables
-        self.go_back_to_start_scene_button = tkinter.Button(text="Go Back", command=self.go_to_start_scene, height=2, width=6, bg="black")
+        self.go_back_to_start_scene_button = tkinter.Button(text="Go Back", command=self.go_back_button, height=2, width=6, bg="black")
+        self.save_build_button = tkinter.Button(text="Save Build", height=2, width=6, bg="black")
         self.show_all_button.pack()
         self.add_build_button.pack()
 
-        self.all_buttons = [self.add_build_button, self.show_all_button, self.go_back_to_start_scene_button]
+        self.all_buttons = [self.add_build_button, self.show_all_button, self.go_back_to_start_scene_button, self.save_build_button]
         self.all_build_labels = []
         self.all_build_entries = []
 
@@ -275,12 +288,24 @@ class GUI:
         self.sell_date_component = None
         self.sell_price_component = None
 
+        self.all_extra_components = [self.extra_costs_components , self.target_sell_price_component , self.extra_profit_component, self.list_date_component,
+                                     self.sell_date_component, self.sell_price_component]
+
+        self.all_components = (self.cpu_components + self.gpu_components + self.ram_components + self.motherboard_components + self.ssd_components +
+                               self.nvme_components + self.hdd_components + self.psu_components + self.case_components + self.all_extra_components)
+
+        print(self.all_components)
+
         self.all_labels = self.all_build_labels + []
         self.all_entries = self.all_build_entries + []
 
         self.go_to_start_scene()
 
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def go_back_button(self):
+        if messagebox.askokcancel("Go Back?", "Are you sure you want to go back? Make sure to save your build."):
+            self.go_to_start_scene()
 
     def add_all_entry_components(self):
         self.add_all_cpu_components()
@@ -304,72 +329,59 @@ class GUI:
         self.add_cpu_component("Name")
         self.add_cpu_component("Brand")
         self.add_cpu_component("Price")
-        self.add_cpu_component("Threads")
-        self.add_cpu_component("Clock Speed")
 
     def add_all_gpu_components(self):
         self.add_gpu_component("GPU", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_gpu_component("Name")
         self.add_gpu_component("Brand")
         self.add_gpu_component("Price")
-        self.add_gpu_component("Memory Size")
-        self.add_gpu_component("Clock Speed")
 
     def add_all_ram_components(self):
         self.add_ram_component("RAM", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_ram_component("Name")
         self.add_ram_component("Brand")
         self.add_ram_component("Price")
-        self.add_ram_component("Capacity")
-        self.add_ram_component("Speed")
 
     def add_all_motherboard_components(self):
         self.add_motherboard_component("Motherboard", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_motherboard_component("Name")
         self.add_motherboard_component("Brand")
         self.add_motherboard_component("Price")
-        self.add_motherboard_component("Chipset")
+
 
     def add_all_ssd_components(self):
         self.add_ssd_component("SSD", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_ssd_component("Name")
         self.add_ssd_component("Brand")
         self.add_ssd_component("Price")
-        self.add_ssd_component("Capacity")
-        self.add_ssd_component("Read Speed")
-        self.add_ssd_component("Write Speed")
+        self.add_ssd_component("Checkbox", is_checkbox=True)
 
     def add_all_hdd_components(self):
         self.add_hdd_component("HDD", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_hdd_component("Name")
         self.add_hdd_component("Brand")
         self.add_hdd_component("Price")
-        self.add_hdd_component("RPM")
+        self.add_hdd_component("Checkbox", is_checkbox=True)
+
 
     def add_all_nvme_components(self):
         self.add_nvme_component("NVME", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_nvme_component("Name")
         self.add_nvme_component("Brand")
         self.add_nvme_component("Price")
-        self.add_nvme_component("Capacity")
-        self.add_nvme_component("Read Speed")
-        self.add_nvme_component("Write Speed")
+        self.add_nvme_component("Checkbox", is_checkbox=True)
 
     def add_all_psu_components(self):
         self.add_psu_component("PSU", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_psu_component("Name")
         self.add_psu_component("Brand")
         self.add_psu_component("Price")
-        self.add_psu_component("Wattage")
-        self.add_psu_component("Efficiency")
 
     def add_all_case_components(self):
         self.add_case_component("Case", font=("Arial", 16, "bold"), title=True)  # Title
         self.add_case_component("Name")
         self.add_case_component("Brand")
         self.add_case_component("Price")
-        self.add_case_component("Form Factor")
-        self.add_case_component("Colour")
 
     def add_cpu_component(self, text, font=("Arial", 12, "bold"), title=False):
         component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
@@ -419,33 +431,39 @@ class GUI:
 
         self.motherboard_components.append(component)
 
-    def add_ssd_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
+    def add_ssd_component(self, text, font=("Arial", 12, "bold"), title=False, is_checkbox=False):
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title, is_checkbox=is_checkbox)
 
         if title:
             component.label.grid(column=1, row=9, pady=5)
+        elif is_checkbox:
+            component.checkbox.grid(column=len(self.ssd_components)+1, row=9, padx=5)
         else:
             component.label.grid(column=len(self.ssd_components) + 1, row=9, sticky="ew")
             component.entry.grid(column=len(self.ssd_components) + 1, row=10, sticky="ew")
 
         self.ssd_components.append(component)
 
-    def add_hdd_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
+    def add_hdd_component(self, text, font=("Arial", 12, "bold"), title=False, is_checkbox=False):
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title, is_checkbox=is_checkbox)
 
         if title:
             component.label.grid(column=1, row=11, pady=5)
+        elif is_checkbox:
+            component.checkbox.grid(column=len(self.hdd_components)+1, row=11, padx=5)
         else:
             component.label.grid(column=len(self.hdd_components) + 1, row=11, sticky="ew")
             component.entry.grid(column=len(self.hdd_components) + 1, row=12, sticky="ew")
 
         self.hdd_components.append(component)
 
-    def add_nvme_component(self, text, font=("Arial", 12, "bold"), title=False):
-        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title)
+    def add_nvme_component(self, text, font=("Arial", 12, "bold"), title=False, is_checkbox=False):
+        component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, text, font, is_title=title, is_checkbox=is_checkbox)
 
         if title:
             component.label.grid(column=1, row=13, pady=5)
+        elif is_checkbox:
+            component.checkbox.grid(column=len(self.nvme_components)+1, row=13, padx=5)
         else:
             component.label.grid(column=len(self.nvme_components) + 1, row=13, sticky="ew")
             component.entry.grid(column=len(self.nvme_components) + 1, row=14, sticky="ew")
@@ -687,10 +705,13 @@ class GUI:
         self.target_sell_price_component.label.grid(column=2, row=27, sticky="ew")
         self.target_sell_price_component.entry.grid(column=2, row=28, sticky="ew")
 
+        self.target_sell_price_component.entry.insert(0, "0.00")
+
     def add_extra_profit(self):
         self.extra_profit_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Extra Profit")
         self.extra_profit_component.label.grid(column=3, row=27, sticky="ew")
         self.extra_profit_component.entry.grid(column=3, row=28, sticky="ew")
+        self.extra_profit_component.entry.insert(0, "0.00")
 
     def add_list_date(self):
         self.list_date_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "List Date")
@@ -699,18 +720,20 @@ class GUI:
 
     def add_sell_date(self):
         self.sell_date_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Sell Date")
-        self.sell_date_component.label.grid(column=5, row=27,sticky="ew")
-        self.sell_date_component.entry.grid(column=5, row=28,sticky="ew")
+        self.sell_date_component.label.grid(column=2, row=29,sticky="ew")
+        self.sell_date_component.entry.grid(column=2, row=30,sticky="ew")
 
     def add_sell_price(self):
         self.sell_price_component = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Sell Price")
-        self.sell_price_component.label.grid(column=6, row=27,sticky="ew")
-        self.sell_price_component.entry.grid(column=6, row=28,sticky="ew")
+        self.sell_price_component.label.grid(column=3, row=29,sticky="ew")
+        self.sell_price_component.entry.grid(column=3, row=30,sticky="ew")
+        self.sell_price_component.entry.insert(0, "0.00")
 
     def add_extra_costs(self):
         self.extra_costs_components = ComponentEntry(self.add_build_scrollable_frame.scrollable_frame, "Extra Costs")
-        self.extra_costs_components.label.grid(column=7, row=27, sticky="ew")
-        self.extra_costs_components.entry.grid(column=7, row=28, sticky="ew")
+        self.extra_costs_components.label.grid(column=4, row=29, sticky="ew")
+        self.extra_costs_components.entry.grid(column=4, row=30, sticky="ew")
+        self.extra_costs_components.entry.insert(0, "0.00")
 
     def hide_build_grid_frame(self):
         """Hide the build grid frame."""
@@ -754,9 +777,18 @@ class GUI:
             case Scene.ADD_BUILD_SCENE:
                 self.add_build_scrollable_frame.show()
                 self.go_back_to_start_scene_button.grid(in_=self.navigation_grid_frame, column=1, row=1, pady=5)
+                self.save_build_button.grid(in_=self.navigation_grid_frame, column=2, row=1, pady=5)
 
                 # Layout CPU Entries and Labels
                 self.add_all_entry_components()
+                self.all_extra_components = [self.extra_costs_components, self.target_sell_price_component,
+                                             self.extra_profit_component, self.list_date_component,
+                                             self.sell_date_component, self.sell_price_component]
+
+                self.all_components = (
+                            self.cpu_components + self.gpu_components + self.ram_components + self.motherboard_components + self.ssd_components +
+                            self.nvme_components + self.hdd_components + self.psu_components + self.case_components + self.all_extra_components)
+                print(self.all_components)
 
     def go_to_start_scene(self):
         self.hide_add_build_grid_frame()
@@ -773,7 +805,10 @@ class GUI:
         self.new_build_sku = generate_unique_sku()
 
         self.image_upload_frame = tkinter.Frame(self.add_build_scrollable_frame, bg="lightblue", width=500, height=500)
-        self.image_upload_frame.grid(column=3, row=0, pady=20, sticky="nsew", padx=(0, 50))
+        self.image_upload_frame.grid(column=2, row=0, pady=20, sticky="nsew", padx=(0, 50))
+
+        self.edit_build_frame = tkinter.Frame(self.add_build_scrollable_frame, bg="lightblue", width=500, height=300)
+        self.edit_build_frame.grid(column=2, row=1, pady=20, sticky="nsew", padx=(0, 50))
 
         self.display_label = tk.Label(self.image_upload_frame, text="No Image Uploaded", bg="lightblue", width=40, height=15)
         self.display_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -796,6 +831,15 @@ class GUI:
 
         self.new_sku_label = tk.Label(self.image_upload_frame, text=f"Builds SKU: {self.new_build_sku}", bg="lightblue", font=("Arial", 16, "bold"))
         self.new_sku_label.grid(row=2, column=0, stick="ew")
+
+        for component in self.all_components:
+            if component is not None and component.label is not None:
+                if component.label.cget("text") == "Price":
+                    component.entry.insert(0, "0.00")
+
+    @staticmethod
+    def show_message_has_no_image():
+        messagebox.showinfo("No Image Uploaded!", "Unable to save due to no image uploaded.")
 
     def open_uploader(self):
         """
@@ -824,25 +868,39 @@ class GUI:
         # Make sure the label is large enough to display the image
         self.display_label.config(width=300, height=250)
 
+        self.has_image = True
+
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            clean_unused_skus()
             self.window.destroy()
 
     def update_labels(self):
         total_builds = len(self.visible_builds)
         for i in range(total_builds):
-            self.visible_builds[i].build_sku_label = tkinter.Label(self.build_scrollable_frame.scrollable_frame, text=f"SKU: {self.visible_builds[i].get_sku()}", bg='lightblue')
-            self.visible_builds[i].build_sku_label.grid(in_=self.build_scrollable_frame.scrollable_frame, column = 1, row=i)
-            self.visible_builds[i].description_label = tkinter.Label(self.build_scrollable_frame.scrollable_frame, text=self.visible_builds[i].pc_str, bg='lightblue')
-            self.visible_builds[i].description_label.grid(in_=self.build_scrollable_frame.scrollable_frame, column=2, row=i)
+            self.visible_builds[i].update_build_button = tkinter.Button(text="Update", bg="lightblue", width=4, height=2,
+                                                      font=("Arial", 10), borderwidth=0, highlightbackground="white")
+            self.visible_builds[i].update_build_button.configure(text=f"{self.visible_builds[i].get_sku()}")
+            self.visible_builds[i].update_build_button.grid(in_=self.build_scrollable_frame.scrollable_frame, column=1, row=i, padx=(5, 0))
+            self.visible_builds[i].description_label = tkinter.Label(
+                self.build_scrollable_frame.scrollable_frame, text=self.visible_builds[i].pc_str, bg='lightblue',
+                font=("Arial", 13),
+                fg="white",
+                anchor="w",  # Align text to the left
+                justify="left",  # Left-align multi-line text
+                padx=10,  # Add padding on the x-axis
+                pady=10,  # Add padding on the y-axis
+                wraplength=200
+            )
+            self.visible_builds[i].description_label.grid(in_=self.build_scrollable_frame.scrollable_frame, column=2, row=i, pady=(25,0))
 
     def update_photos(self):
         total_builds = len(self.visible_builds)
         for i in range(total_builds):
             image_file_path = self.visible_builds[i].full_pc_dict["image_file_name"]
-            self.visible_builds[i].build_image = Canvas(width=250, height=250)
-            build_img = PhotoImage(file=f"../images/{image_file_path}")
-            self.visible_builds[i].build_image.create_image(125, 125, image=build_img)
+            self.visible_builds[i].build_image = Canvas(width=350, height=300)
+            build_img = resize_image(image_path=f"../images/{image_file_path}", width=350, height=300)
+            self.visible_builds[i].build_image.create_image(175, 150, image=build_img)
             self.visible_builds[i].build_image.grid(in_=self.build_scrollable_frame.scrollable_frame, column = 0, row=i)
             self.visible_builds[i].build_image.image = build_img
 
@@ -865,7 +923,8 @@ class GUI:
         print(self.visible_builds)
         self.build_scrollable_frame.clear()
         for build in self.visible_builds:
-            build.build_image.grid_forget()
+            if build is not None:
+                build.build_image.grid_forget()
         self.visible_builds = []
         print(self.visible_builds)
 

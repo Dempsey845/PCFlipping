@@ -94,3 +94,17 @@ def open_image_uploader(display_callback, sku):
     root.resizable(False, False)
     app = ImageUploaderApp(root, display_callback, sku)
     root.mainloop()
+
+
+def resize_image(image_path, width, height):
+    '''Returns a tkinter PhotoImage resized to the specified width and height'''
+    # Open the image using Pillow
+    original_image = Image.open(image_path)
+
+    # Resize the image to the given width and height
+    resized_image = original_image.resize((width, height))
+
+    # Convert the resized image to a Tkinter-compatible PhotoImage object
+    tk_image = ImageTk.PhotoImage(resized_image)
+
+    return tk_image
