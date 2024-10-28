@@ -3,5 +3,4 @@ Features include:
 Simple GUI for easy interaction
 Add builds through the GUI that are saved to a .json file
 Add images to the builds
-TODO - Delete builds
-TODO - Sort builds by list-date/sell-date/profit/cpu-brand, etc...
+Edit old builds
