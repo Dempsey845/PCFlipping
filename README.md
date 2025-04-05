@@ -1,6 +1,2 @@
-Hi this is a personal project to help me organise my PC Flipping sales.
-Features include:
-Simple GUI for easy interaction
-Add builds through the GUI that are saved to a .json file
-Add images to the builds
-Edit old builds
+Old python pc flipping project of mine. Awful code don't judge 😅
+After I finish my finance web app Fracker I will be working on a new web version.
